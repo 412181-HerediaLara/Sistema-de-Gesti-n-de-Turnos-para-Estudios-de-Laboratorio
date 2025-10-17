@@ -1,1 +1,1 @@
-# Sistema-de-Gesti-n-de-Turnos-para-Estudios-de-Laboratorio
+# Sistema-de-Gestion-de-Turnos-para-Estudios-de-Laboratorio
