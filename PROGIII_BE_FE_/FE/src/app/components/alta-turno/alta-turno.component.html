@@ -1,0 +1,45 @@
+<div class="max-w-lg mx-auto bg-white shadow-lg rounded-xl p-8">
+  <h2 class="text-2xl mb-6 font-semibold text-blue-800 text-center">Alta de Turno</h2>
+  <form #form="ngForm" (ngSubmit)="crearTurno(form)" class="space-y-5">
+    <div>
+      <label class="block mb-1 text-sm font-medium text-gray-700">Paciente</label>
+      <select class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              [(ngModel)]="turno.paciente_id">
+        <option value="">[Seleccionar paciente]</option>
+        @for(paciente of pacientes; track $index){
+          <option value="{{paciente.id}}">{{paciente.nombre_completo}}</option>
+        }
+      </select>
+    </div>
+    <div>
+      <label class="block mb-1 text-sm font-medium text-gray-700">Estudio</label>
+      <select class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              [(ngModel)]="turno.estudio_id">
+        <option value="">[Seleccionar estudio]</option>
+        @for (estudio of estudios; track $index) {
+          <option value="{{estudio.id}}">{{estudio.nombre_estudio}}</option>
+        }
+      </select>
+    </div>
+    <div>
+      <label class="block mb-1 text-sm font-medium text-gray-700">Extractor</label>
+      <select class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              [(ngModel)]="turno.extractor_id">
+        <option value="">[Seleccionar extractor]</option>
+        @for (extractor of extractores; track $index) {
+          <option value="{{extractor.id}}">{{extractor.nombre_completo}}</option>
+        }
+      </select>
+    </div>
+    <div>
+      <label class="block mb-1 text-sm font-medium text-gray-700">Fecha y Hora</label>
+      <input class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400" type="datetime-local" />
+      <div class="text-xs text-gray-400 mt-1">Horario válido: 07:00 - 10:45</div>
+    </div>
+    <div>
+      <label class="block mb-1 text-sm font-medium text-gray-700">Observaciones</label>
+      <input class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400" type="text" />
+    </div>
+    <button class="w-full bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-800 transition-colors font-semibold" type="submit">Guardar Turno</button>
+  </form>
+</div>
