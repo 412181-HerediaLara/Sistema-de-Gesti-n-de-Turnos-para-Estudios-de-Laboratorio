@@ -4,19 +4,25 @@ import { Extractor } from './extractor.model';
 
 export interface Turno {
   id: number;
+  paciente_id: number;
+  estudio_id: number;
+  extractor_id: number;
+  fechaHora: string;
+  estado: 'DISPONIBLE' | 'OCUPADO' | 'CANCELADO';
+  observaciones?: string;
+  created_at?: string;
+  updated_at?: string;
+
   paciente?: Paciente;
   estudio?: Estudio;
   extractor?: Extractor;
-  fechaHora: string; // yyyy-MM-dd'T'HH:mm:ss
-  observaciones?: string;
-  status?: string;
 }
 
 export interface TurnoInput {
   paciente_id: number;
   estudio_id: number;
   extractor_id: number;
-  fechaHora: string;       // yyyy-MM-dd'T'HH:mm:ss
+  fechaHora: string;
   observaciones?: string;
 }
 
@@ -24,5 +30,6 @@ export interface FiltroTurnos {
   paciente_id?: number;
   estudio_id?: number;
   extractor_id?: number;
-  fecha?: string; // yyyy-MM-dd'T'HH:mm:ss
+  fecha?: string;
+  estado?: 'DISPONIBLE' | 'OCUPADO' | 'CANCELADO';
 }

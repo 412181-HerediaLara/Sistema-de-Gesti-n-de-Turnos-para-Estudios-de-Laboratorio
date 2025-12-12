@@ -1,32 +1,65 @@
 <div class="w-full mx-auto bg-white shadow-lg rounded-xl p-8 mt-8">
   <h2 class="text-2xl mb-6 font-semibold text-blue-800 text-center">Turnos Disponibles</h2>
-  <div class="mb-6">
-    <label class="block mb-1 text-sm font-medium text-gray-700">Filtrar por extractor</label>
-    <select class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400">
-      <option value="">Todos</option>
-      @for (e of estudios; track e.id) {
-        <option [value]="e.id">{{ e.nombre_estudio }}</option>
-      }
-    </select>
-  </div>
-  <ul class="flex flex-wrap gap-4">
-    <li class="w-1/4 flex flex-col items-center justify-between bg-white shadow-md rounded-lg p-4 hover:bg-blue-50 transition-colors">
-      <div>
-        <div class="font-medium text-gray-700">Fecha y Hora</div>
-        <div class="text-sm text-gray-500">Extractor: Nombre del extractor</div>
+
+  @if (!mostrarFormulario) {
+    <!-- Filtro por extractor -->
+    <div class="mb-6">
+      <label class="block mb-1 text-sm font-medium text-gray-700">Filtrar por extractor</label>
+      <select
+        [(ngModel)]="extractorSeleccionado"
+        (ngModelChange)="aplicarFiltro()"
+        class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400">
+        <option [ngValue]="null">Todos</option>
+        @for (extractor of extractores; track extractor.id) {
+          <option [ngValue]="extractor.id">{{ extractor.nombre_completo }}</option>
+        }
+      </select>
+    </div>
+
+    <!-- Lista de turnos disponibles -->
+    @if (turnosFiltrados.length === 0) {
+      <div class="text-center py-8 text-gray-500">
+        <p>No hay turnos disponibles con los filtros seleccionados.</p>
       </div>
-      <button class="bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-800 transition-colors font-semibold mt-2">Seleccionar</button>
-    </li>
-  </ul>
-  @if (false) {
-    <app-alta-turno></app-alta-turno>
-  <div class="flex justify-center mt-8">
-    <button class="px-6 py-3 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 shadow transition-colors font-semibold flex items-center gap-2">
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-      </svg>
-      Cancelar
-    </button>
-  </div>
+    } @else {
+      <ul class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        @for (turno of turnosFiltrados; track turno.id) {
+          <li class="flex flex-col items-center justify-between bg-white shadow-md rounded-lg p-4 hover:bg-blue-50 transition-colors">
+            <div class="w-full text-center mb-3">
+              <div class="font-medium text-gray-700 mb-1">
+                {{ formatearFechaHora(turno.fechaHora) }}
+              </div>
+              <div class="text-sm text-gray-500">
+                Extractor: {{ obtenerNombreExtractor(turno.extractor_id) }}
+              </div>
+            </div>
+            <button
+              (click)="seleccionarTurno(turno)"
+              class="bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-800 transition-colors font-semibold w-full">
+              Seleccionar
+            </button>
+          </li>
+        }
+      </ul>
+    }
+  } @else {
+    <!-- Formulario de alta de turno -->
+    <app-alta-turno
+      [turnoSeleccionado]="turnoSeleccionado"
+      (turnoGuardado)="onTurnoGuardado()">
+    </app-alta-turno>
+
+    <!-- Botón cancelar -->
+    <div class="flex justify-center mt-8">
+      <button
+        (click)="cancelarSeleccion()"
+        type="button"
+        class="px-6 py-3 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 shadow transition-colors font-semibold flex items-center gap-2">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+        Cancelar
+      </button>
+    </div>
   }
 </div>

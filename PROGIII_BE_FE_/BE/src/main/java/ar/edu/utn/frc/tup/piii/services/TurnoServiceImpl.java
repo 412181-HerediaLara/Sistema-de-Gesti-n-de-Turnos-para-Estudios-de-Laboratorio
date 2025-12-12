@@ -16,6 +16,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -42,61 +43,64 @@ public class TurnoServiceImpl implements TurnoService {
 
     @Override
     public TurnoDTO createTurno(NewTurnoDTO newTurnoDTO) {
-        // TODO: Implementar la lógica para agendar un turno
-        EstudioDTO estudioDTO = estudioService.getEstudioById(newTurnoDTO.getEstudioId());
-        if (estudioDTO == null) {
-            throw new BusinessException("No se encontraron estudios",HttpStatus.NOT_FOUND);
-        }
-        ExtractorDTO extractorDto = extractorService.getExtractorById(newTurnoDTO.getExtractorId());
-        if (extractorDto == null) {
-            throw new BusinessException("No se encontraron extractores",HttpStatus.NOT_FOUND);
-        }
-        PacienteDTO pacienteDto = pacienteService.getPacienteById(newTurnoDTO.getPacienteId());
-        if (pacienteDto == null) {
-            throw new BusinessException("No se encontrarion pacientes",HttpStatus.NOT_FOUND);
-        }
-        if(isValid(newTurnoDTO )){
-            /*TurnoEntity turnoEntity = turnoRepository.findAll()
-                    .stream().filter(t ->t.getFechaHora().equals(newTurnoDTO.getFechaHora())).findFirst()
-                    .orElseThrow(() ->  new BusinessException("No se encontró el turno",HttpStatus.NOT_FOUND));*/
-            TurnoEntity turnoEntity = turnoRepository.findTurnoEntitiesByFecha(newTurnoDTO.getFechaHora().toLocalDate()).stream().findFirst()
-                    .orElseThrow(() -> new BusinessException("No se encontró el turno",HttpStatus.NOT_FOUND));
-            turnoEntity.setEstudio(modelMapper.map(estudioDTO, EstudioEntity.class));
-            turnoEntity.setExtractor(modelMapper.map(extractorDto, ExtractorEntity.class));
-            turnoEntity.setPaciente(modelMapper.map(pacienteDto, PacienteEntity.class));
-            turnoEntity.setStatus(TurnoStatus.DISPONIBLE);
-            turnoEntity.setFechaHora(newTurnoDTO.getFechaHora());
-            turnoEntity.setObservaciones(newTurnoDTO.getObservaciones());
+        PacienteDTO paciente = pacienteService.getPacienteById(newTurnoDTO.getPacienteId());
+        ExtractorDTO extractor = extractorService.getExtractorById(newTurnoDTO.getExtractorId());
+        EstudioDTO estudio = estudioService.getEstudioById(newTurnoDTO.getEstudioId());
 
-            turnoRepository.save(turnoEntity);
-
-            return modelMapper.map(turnoEntity, TurnoDTO.class);
-        } else {
-            throw new BusinessException("No se pudo crear el turno, intente nuevamente",HttpStatus.BAD_REQUEST);
+        if (paciente == null || extractor == null || estudio == null) {
+            throw new BusinessException(
+                    "Extractor, Paciente o Estudio no existen",
+                    HttpStatus.BAD_REQUEST);
         }
 
+        LocalDateTime fechaHora = newTurnoDTO.getFechaHora();
+        LocalDate dia = fechaHora.toLocalDate();
+
+        boolean pacienteYaTieneTurnoEseDia =
+                turnoRepository.findTurnoEntitiesByPacienteId(paciente.getId())
+                        .stream()
+                        .filter(t -> t.getStatus() == TurnoStatus.OCUPADO) // Solo turnos ocupados
+                        .anyMatch(t -> t.getFechaHora().toLocalDate().equals(dia));
+
+        if (pacienteYaTieneTurnoEseDia) {
+            throw new BusinessException(
+                    "El paciente ya tiene un turno agendado para el día indicado",
+                    HttpStatus.BAD_REQUEST);
+        }
+
+        boolean extractorOcupado =
+                turnoRepository.findTurnoEntitiesByFechaHoraAndExtractorId(fechaHora, extractor.getId())
+                        .stream()
+                        .anyMatch(t -> t.getStatus() == TurnoStatus.OCUPADO);
+
+        if (extractorOcupado) {
+            throw new BusinessException(
+                    "Ya existe un turno para el extractor en esa fecha y hora",
+                    HttpStatus.BAD_REQUEST);
+        }
+
+        TurnoEntity turnoDisponible =
+                turnoRepository.findTurnoEntitiesByFechaHoraAndExtractorId(fechaHora, extractor.getId())
+                        .stream()
+                        .filter(t -> t.getStatus() == TurnoStatus.DISPONIBLE)
+                        .findFirst()
+                        .orElseThrow(() ->
+                                new BusinessException(
+                                        "No hay turnos disponibles en ese horario para ese extractor",
+                                        HttpStatus.BAD_REQUEST
+                                )
+                        );
+
+        turnoDisponible.setPaciente(modelMapper.map(paciente, PacienteEntity.class));
+        turnoDisponible.setEstudio(modelMapper.map(estudio, EstudioEntity.class));
+        turnoDisponible.setObservaciones(newTurnoDTO.getObservaciones());
+        turnoDisponible.setStatus(TurnoStatus.OCUPADO);
+
+        turnoRepository.save(turnoDisponible);
+
+        return modelMapper.map(turnoDisponible, TurnoDTO.class);
     }
 
-    private boolean isValid( NewTurnoDTO newTurnoDto) {
-        List<TurnoEntity> turnosPacientes = turnoRepository.findTurnoEntitiesByPacienteId(newTurnoDto.getPacienteId());
-        turnosPacientes = turnosPacientes.stream().filter(t -> t.getFechaHora().getDayOfMonth() == newTurnoDto.getFechaHora().getDayOfMonth()).toList();
-        if (!turnosPacientes.isEmpty()) {
-            throw new BusinessException("El paciente ya tiene un turno agendado para el día indicado",HttpStatus.BAD_REQUEST);
-        }
-
-        List<TurnoEntity> turnosExtractores = turnoRepository.findTurnoEntitiesByFechaHoraAndExtractorId(newTurnoDto.getFechaHora(), newTurnoDto.getExtractorId());
-        if(turnosExtractores.size() > 1){
-            throw new BusinessException("Ya existe un turno para el extractor en esa fecha y hora",HttpStatus.BAD_REQUEST);
-        }
-
-        List<TurnoEntity> turnos =turnoRepository.findTurnoEntitiesByFechaHoraAndExtractorId(newTurnoDto.getFechaHora(), newTurnoDto.getExtractorId());
-        turnos = turnos.stream().filter(t -> t.getStatus().equals(TurnoStatus.DISPONIBLE)).toList();
-        if (turnos.isEmpty()) {
-            throw new BusinessException("No hay turnos disponibles en ese horario para ese extractor", HttpStatus.BAD_REQUEST);
-        }
-
-        return true;
-    }
 
     @Override
     public List<TurnoDTO> getAllTurnosByExtractor(Long extractorId) {
@@ -137,58 +141,114 @@ public class TurnoServiceImpl implements TurnoService {
      */
     @Override
     public List<TurnoDTO> programarTurnos(LocalDate fecha) {
-        // TODO: Implementar la lógica para programar turnos
-        List<TurnoEntity> turnosEntity = turnoRepository.findTurnoEntitiesByFecha(fecha);
-        if (!turnosEntity.isEmpty()) {
-            throw new BusinessException("Los turnos ya están programados para la fecha indicada", HttpStatus.BAD_REQUEST);
+        // 1️⃣ Verificar si ya hay turnos programados
+        List<TurnoEntity> yaProgramados = turnoRepository.findTurnoEntitiesByFecha(fecha);
+        if (!yaProgramados.isEmpty()) {
+            throw new BusinessException(
+                    "Los turnos ya están programados para la fecha indicada",
+                    HttpStatus.BAD_REQUEST);
         }
 
-        List<DisponibilidadTurnosEntity> disponibilidades = disponibilidadTurnosRepository.findAll();
+        // 2️⃣ Obtener extractores
         List<ExtractorDTO> extractores = extractorService.getAllExtractores();
-        List<TurnoDTO> turnos = new ArrayList<>();
+        if (extractores.isEmpty()) {
+            throw new BusinessException(
+                    "No existen extractores para programar turnos",
+                    HttpStatus.BAD_REQUEST);
+        }
+
+        // 3️⃣ Obtener configuración de disponibilidad desde BD
+        List<DisponibilidadTurnosEntity> disponibilidades =
+                disponibilidadTurnosRepository.findAll();
+
+        // Si no hay configuración, usar valores por defecto
+        if (disponibilidades.isEmpty()) {
+            disponibilidades = List.of(
+                    DisponibilidadTurnosEntity.builder()
+                            .horaInicio(LocalTime.of(7, 0))
+                            .duracionMinutos(15)
+                            .build()
+            );
+        }
+
+        List<TurnoEntity> turnosAGuardar = new ArrayList<>();
+
+        // 4️⃣ Crear turnos para cada extractor
         for (ExtractorDTO extractor : extractores) {
-            for(DisponibilidadTurnosEntity disponibilidad : disponibilidades){
-                LocalDateTime fechaHora = disponibilidad.getHoraInicio().atDate(fecha);
-                TurnoEntity turnoEntity = new TurnoEntity();
-                turnoEntity.setEstudio(null);
-                turnoEntity.setPaciente(null);
-                turnoEntity.setObservaciones(null);
-                turnoEntity.setExtractor(modelMapper.map(extractor, ExtractorEntity.class));
-                turnoEntity.setStatus(TurnoStatus.DISPONIBLE);
-                turnoEntity.setFechaHora(fechaHora);
+            LocalTime inicio = LocalTime.of(7, 0);
+            LocalTime fin = LocalTime.of(10, 45);
 
-                turnoRepository.save(turnoEntity);
+            // Usar la duración desde la configuración
+            int duracionMinutos = disponibilidades.get(0).getDuracionMinutos();
 
-                turnos.add(modelMapper.map(turnoEntity, TurnoDTO.class));
+            LocalTime horaActual = inicio;
+            while (!horaActual.isAfter(fin)) {
+                TurnoEntity turno = new TurnoEntity();
+                turno.setExtractor(modelMapper.map(extractor, ExtractorEntity.class));
+                turno.setPaciente(null);
+                turno.setEstudio(null);
+                turno.setObservaciones(null);
+                turno.setStatus(TurnoStatus.DISPONIBLE);
+                turno.setFechaHora(LocalDateTime.of(fecha, horaActual));
+
+                turnosAGuardar.add(turno);
+                horaActual = horaActual.plusMinutes(duracionMinutos);
             }
         }
-        if (turnos.isEmpty()) {
-           throw new BusinessException("No se pudieron programar los turnos", HttpStatus.BAD_REQUEST);
-        }else {
-            return turnos;
-        }
-    }
 
+        turnoRepository.saveAll(turnosAGuardar);
+
+        return turnosAGuardar.stream()
+                .map(t -> modelMapper.map(t, TurnoDTO.class))
+                .toList();
+    }
     @Override
-    public List<TurnoDTO> obtenerTurnos(Optional<Long> estudioId, Optional<Long> extractorId, Optional<Long> pacienteId, Optional<LocalDate> fecha) {
+    public List<TurnoDTO> obtenerTurnos(
+            Optional<Long> estudioId,
+            Optional<Long> extractorId,
+            Optional<Long> pacienteId,
+            Optional<LocalDateTime> fechaHora ) {
+        // 1️⃣ Contar cuántos filtros vienen
+        int filtros = 0;
+        if (estudioId.isPresent()) filtros++;
+        if (extractorId.isPresent()) filtros++;
+        if (pacienteId.isPresent()) filtros++;
+        if (fechaHora.isPresent()) filtros++;
+
+        if (filtros > 1) {
+            throw new BusinessException(
+                    "Solo se puede filtrar por un campo a la vez",
+                    HttpStatus.BAD_REQUEST
+            );
+        }
+
         List<TurnoEntity> turnos;
 
-        if(estudioId.isPresent()) {
+        // 2️⃣ Buscar según el filtro enviado
+        if (estudioId.isPresent()) {
             turnos = turnoRepository.findTurnoEntitiesByEstudioId(estudioId.get());
         } else if (extractorId.isPresent()) {
             turnos = turnoRepository.findTurnoEntitiesByExtractorId(extractorId.get());
         } else if (pacienteId.isPresent()) {
             turnos = turnoRepository.findTurnoEntitiesByPacienteId(pacienteId.get());
-        } else if (fecha.isPresent()) {
-            turnos = turnoRepository.findTurnoEntitiesByFecha(fecha.get());
+        } else if (fechaHora.isPresent()) {
+            turnos = turnoRepository.findTurnoEntitiesByFechaHora(fechaHora.get());
         } else {
             turnos = turnoRepository.findAll();
         }
 
-        if(!turnos.isEmpty()){
-            return turnos.stream().map(t -> modelMapper.map(t, TurnoDTO.class)).toList();
-        } else {
-            throw new BusinessException("No se pudieron obtener los turnos", HttpStatus.NOT_FOUND);
+        // 3️⃣ Validación
+        if (turnos.isEmpty()) {
+            throw new BusinessException(
+                    "No se encontraron turnos",
+                    HttpStatus.NOT_FOUND
+            );
         }
+
+        // 4️⃣ Mappeo final
+        return turnos.stream()
+                .map(t -> modelMapper.map(t, TurnoDTO.class))
+                .toList();
     }
+
 }

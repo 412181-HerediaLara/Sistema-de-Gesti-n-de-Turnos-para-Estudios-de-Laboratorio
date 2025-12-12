@@ -27,10 +27,14 @@ public class TurnoController {
             @RequestParam(name = "estudio_id") Optional<Long> estudioId,
             @RequestParam(name = "extractor_id") Optional<Long> extractorId,
             @RequestParam(name = "paciente_id") Optional<Long> pacienteId,
-            @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd") @RequestParam Optional<LocalDate> fecha
+            @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
+            @RequestParam(name = "fecha_hora") Optional<LocalDateTime> fechaHora
     ) {
-        return ResponseEntity.ok(turnoService.obtenerTurnos(estudioId, extractorId, pacienteId, fecha));
+        return ResponseEntity.ok(
+                turnoService.obtenerTurnos(estudioId, extractorId, pacienteId, fechaHora)
+        );
     }
+
 
     @PutMapping("/turnos")
     public ResponseEntity<TurnoDTO> createNewTurno(@RequestBody NewTurnoDTO newTurnoDTO) {

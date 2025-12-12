@@ -1,6 +1,6 @@
 import {Component, Input, OnInit} from '@angular/core';
 import { TurnoService } from '../../services/turno.service';
-import { CommonModule, DatePipe, NgClass } from '@angular/common';
+import { CommonModule, DatePipe } from '@angular/common';
 import { TurnosFilterComponent } from '../turnos-filter/turnos-filter.component';
 import { FiltroTurnos, Turno } from '../../models/turno.model';
 
@@ -19,9 +19,7 @@ export class TurnosListComponent implements OnInit {
   filtro: FiltroTurnos = {};
   error: string = '';
 
-  constructor(private tSrv: TurnoService) {
-
-  }
+  constructor(private tSrv: TurnoService) {}
 
   ngOnInit() {
     this.cargarTurnos({});
@@ -33,6 +31,21 @@ export class TurnosListComponent implements OnInit {
   }
 
   cargarTurnos(obj: FiltroTurnos) {
-    //TODO: Obtener los turnos que solo tengan el status 'OCUPADO'
+    this.error = "";
+    this.turnos = [];
+
+    const filtroConEstado: FiltroTurnos = {
+      ...obj,
+      estado: 'OCUPADO'
+    };
+
+    this.tSrv.getTurnos(filtroConEstado).subscribe({
+      next: (resp) => {
+        this.turnos = resp.filter(t => t.estado === 'OCUPADO');
+      },
+      error: () => {
+        this.error = "Hubo un problema al cargar los turnos. Intente nuevamente.";
+      }
+    });
   }
 }

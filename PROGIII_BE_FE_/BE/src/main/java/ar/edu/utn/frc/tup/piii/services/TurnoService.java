@@ -21,5 +21,5 @@ public interface TurnoService {
     List<TurnoDTO> getAllTurnosByFecha(LocalDate fecha);
     List<TurnoDTO> getAllTurnos();
     List<TurnoDTO> programarTurnos(LocalDate fecha);
-    List<TurnoDTO> obtenerTurnos(Optional<Long> estudioId, Optional<Long>extractorId, Optional<Long>pacienteId, Optional<LocalDate> fecha);
+    List<TurnoDTO> obtenerTurnos(Optional<Long> estudioId, Optional<Long>extractorId, Optional<Long>pacienteId, Optional<LocalDateTime> fecha);
 }
